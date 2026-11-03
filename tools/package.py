@@ -12,7 +12,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 PIN = '81ae4a7d8f27d38e5cabbdcda0a06b2c4b000045'
 MIXINS = 'ddd9700b21997c95d95ac6ee5ecafe3830cf622a'
-VERSION = '0.1.3'
+VERSION = '0.1.4'
 ENGINE = ('engine.rs', 'resources.rs', 'actions.rs', 'tuning.rs',
           'horizon_pose.rs', 'skeleton.rs', 'attachments.rs', 'playback.rs',
           'phases.rs', 'policy.rs', 'player.rs')

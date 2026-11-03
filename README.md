@@ -1,73 +1,48 @@
-# Punchy for Horizon
+# Punchy Horizon
 
-Community Rust port of [Punchy](https://modrinth.com/mod/punchy-fpa) first-person
-animations for [Horizon](https://github.com/horizon-rust/horizon).
+A native animation mod for [Horizon](https://github.com/horizon-rust/horizon)
+(Minecraft Java 26.3 in Rust), bringing Punchy-style first-person hand and item
+animations to the client.
 
-Original Punchy by **Dev Punchy Man**. Port maintained by **MoonFvv**.
-This is an unofficial community project.
+## Features
 
-## Install
+- **Combat animations** for attacks and shield use.
+- **Mining animations** with start, loop and end phases, including creative instant breaks.
+- **Eating and drinking** with complete start-loop-end sequences.
+- **Item inspection** and animated interactions such as shovel use.
+- **Smooth transitions** that keep the outgoing animation moving when an action changes.
+- **Self-contained resources**: 223 bundled clips, geometry and tuning; no separate Punchy JAR or Fabric install.
 
-Use a release's `.hnmod` file. In Horizon's launcher, add it to your instance's
-native mods, enable Punchy and build the game with native mods. Keep your own
-Minecraft 26.3 installation available for Horizon's normal resource preparation.
+Settings: **Options > Mods > Punchy Rust**. Hand poses default to **Punchy**.
+**F6** inspects the held item; **F7** reloads bundled animation data. Keys can be changed in the mod settings.
 
-No separate Punchy JAR, Java runtime or Fabric installation is needed to run
-this port. Its 223 bundled animation clips, geometry and tuning are compiled
-into the native game. **Hand poses default to Punchy.** F6 inspects; F7 reloads
-bundled animations. Key bindings and animation speed can be changed in Mods.
+## Installation
 
-## Current scope
+1. Download the `.hnmod` file from [Releases](https://github.com/MoonFvv/punchy-horizon/releases/latest).
+2. Add it to your Horizon instance's native mods and enable Punchy.
+3. Build the game with native mods in the launcher, then launch it.
 
-Implemented/tested cases include sword attacks, inspection, shield use,
-eating/drinking/mining start-loop-end sequences, mining release, creative
-instant breaks and successful shovel use. Interrupted animations retain a
-live outgoing pose during transitions.
+Horizon still prepares its own Minecraft resources from your Minecraft installation.
+Native mods run with the same access as the game.
 
-This is an incomplete port. Full locomotion, physics, special item renderers,
-the original editor/config layering and all compound hand/equip transitions
-are not implemented. Full visual equivalence with original Punchy is not established.
+## Compatibility and development
 
-## Compatibility
-
-- Minecraft: **26.3**.
-- Bundle: **0.1.3** (portable source/build packaging of the locally tested 0.1.2 runtime).
-- Horizon: `81ae4a7d8f27d38e5cabbdcda0a06b2c4b000045`.
-- horizon-mixins: `ddd9700b21997c95d95ac6ee5ecafe3830cf622a`.
-
-Other revisions require validation. This native mod runs with the same account
-permissions as Horizon; review its source before building it.
-
-## Develop and package
-
-Rust and Python 3.9+ are needed for development. Engine tests use bundled data
-and checked-in numerical fixtures; no original JAR or decompiler is needed.
+Pinned to Horizon `81ae4a7d8f27d38e5cabbdcda0a06b2c4b000045` and
+horizon-mixins `ddd9700b21997c95d95ac6ee5ecafe3830cf622a`.
 
 ```sh
 cargo test --locked
 cargo clippy --locked --all-targets -- -D warnings
-cargo fmt --check
 ```
 
-To build a bundle, check out the pinned Horizon source and run:
+See [DEVELOPMENT.md](DEVELOPMENT.md) for packaging and [VALIDATION.md](VALIDATION.md)
+for test coverage. Full locomotion, physics, special renderers and the original
+editor are not implemented; this is not complete parity with original Punchy.
 
-```sh
-git clone https://github.com/horizon-rust/horizon.git horizon-source
-git -C horizon-source checkout 81ae4a7d8f27d38e5cabbdcda0a06b2c4b000045
-python3 tools/package.py --horizon-source horizon-source
-```
+## Credits and license
 
-The tool validates the exact `.hnmod` with Horizon's actual Bundle::read parser.
-Output is in `dist/`. Add `--offline` to use cached Cargo dependencies.
-The original license notices are included with the bundle.
-
-`tools/runtime_smoke.py` can exercise a compiled native game with `--binary`,
-`--ctl`, `--resources` and `--report`. It creates fresh temporary homes and a
-throwaway world; it never uses the player's saves. See VALIDATION.md for scope.
-
-## Credits and licensing
-
-See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), [LICENSE](LICENSE),
-[LICENSE-Punchy](LICENSE-Punchy) and [LICENSE-Horizon](LICENSE-Horizon).
-The Horizon MIT license does not relicense Punchy's implementation or assets.
-A registry listing or review acceptance is not claimed.
+Community port based on [Punchy](https://modrinth.com/mod/punchy-fpa) by Dev Punchy Man.
+Includes adapted implementation and original animation data. This is an unofficial project.
+Original notices are retained in [LICENSE-Punchy](LICENSE-Punchy) and
+[LICENSE-Horizon](LICENSE-Horizon); see [LICENSE](LICENSE) and
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

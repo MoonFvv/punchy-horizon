@@ -1,7 +1,7 @@
 {
-  "version": "0.1.3",
-  "artifact": "punchy-rust-preview-0.1.3.hnmod",
-  "sha256": "8eea5b31857d1b53b0cc44fa9d356f35dff2e8fa633efd83b666d0cdd3340b47",
+  "version": "0.1.4",
+  "artifact": "punchy-rust-preview-0.1.4.hnmod",
+  "sha256": "80ca096ed14764830e3ae06e9efb50d05333593908f9199b0007b9c13060128e",
   "engine_tests": 55,
   "clippy": "passed with warnings denied",
   "native_bundle_validator": "pinned Horizon Bundle::read passed",
