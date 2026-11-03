@@ -1,0 +1,13 @@
+/target/
+/.build/
+/dist/
+/reports/
+*.jar
+*.class
+*.gpr
+*.rep/
+.local/
+.env
+.env.*
+.DS_Store
+__pycache__/

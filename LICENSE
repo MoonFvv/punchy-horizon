@@ -1,0 +1,12 @@
+Licensing notices
+
+This project includes adapted Punchy implementation and original Punchy animation,
+geometry and tuning data. Punchy remains copyright (c) 2026 Dev Punchy Man under
+its original custom all-rights-reserved license. See LICENSE-Punchy.
+
+The Horizon-derived rendering adapter retains Horizon's MIT notice in
+LICENSE-Horizon. That notice does not relicense Punchy's code or data.
+
+This repository does not claim ownership of the original Punchy mod or grant
+rights that belong to its original author. No original Java archive or Minecraft
+resources are included.
