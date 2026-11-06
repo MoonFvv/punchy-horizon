@@ -27,8 +27,8 @@ Native mods run with the same access as the game.
 
 ## Compatibility and development
 
-Pinned to Horizon `81ae4a7d8f27d38e5cabbdcda0a06b2c4b000045` and
-horizon-mixins `ddd9700b21997c95d95ac6ee5ecafe3830cf622a`.
+Updated for Horizon **Nightly 2026-11-05** (`66f3981`). Pinned to Horizon `66f3981f522b24c250b21523a70080965b940424` and
+horizon-mixins `5a64af938ec86b00d53d16a408aabc0038fb3e57`.
 
 ```sh
 cargo test --locked

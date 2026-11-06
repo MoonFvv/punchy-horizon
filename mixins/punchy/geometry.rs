@@ -1,7 +1,11 @@
-// Adapted from Horizon game.rs at 81ae4a7d8f27d38e5cabbdcda0a06b2c4b000045 (MIT).
+// Adapted from Horizon game.rs at 66f3981f522b24c250b21523a70080965b940424 (MIT).
 use super::*;
-pub(super) fn render(game: &mut crate::game::Game<'_>, alpha: f64) -> Vec<Vertex> {
+pub(super) fn render(
+    game: &mut crate::game::Game<'_>,
+    alpha: f64,
+) -> (Vec<Vertex>, Vec<(u32, i32)>) {
     let mut out = Vec::new();
+    let mut runs = Vec::new();
     // GameRenderer.renderItemInHand: F1 hides the hand with the HUD.
     if game.spectator()
         || game.ui.hide_gui
@@ -13,7 +17,7 @@ pub(super) fn render(game: &mut crate::game::Game<'_>, alpha: f64) -> Vec<Vertex
             .is_none_or(|p| p.health.dead_or_dying())
         || game.screen == Screen::Dead
     {
-        return out;
+        return (out, runs);
     }
     let a = alpha as f32;
     // FirstPersonHandsAndItemsRenderer: the swing goes to the hand that
@@ -69,6 +73,29 @@ pub(super) fn render(game: &mut crate::game::Game<'_>, alpha: f64) -> Vec<Vertex
         if canceled {
             continue;
         }
+        let (mut x, mut y, mut z, mut pitch, mut yaw, mut roll, mut pose_scale) =
+            (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
+        game.native_render_hand_pose(
+            hand,
+            item.as_ref(),
+            a,
+            attack,
+            inverse_height,
+            &mut x,
+            &mut y,
+            &mut z,
+            &mut pitch,
+            &mut yaw,
+            &mut roll,
+            &mut pose_scale,
+        );
+        // No mod moved the hand (always so without one): no matrices to build.
+        let pose = [x, y, z, pitch, yaw, roll, pose_scale];
+        let to_world = if pose == [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0] {
+            to_world
+        } else {
+            to_world * native_hooks::hand_pose_matrix(pose)
+        };
         // The main hand on its arm, the off hand on the other one.
         let left = game.settings.main_hand_left != (hand == Hand::Off);
         let Some(stack) = item else {
@@ -80,19 +107,23 @@ pub(super) fn render(game: &mut crate::game::Game<'_>, alpha: f64) -> Vec<Vertex
             }
             // renderPlayerArm
             let m = to_world * crate::game::punchy::arm_pose(left, inverse_height, attack);
+            runs.push((out.len() as u32, 0));
             game.first_person_arm(left, m, packed, &mut out);
             continue;
         };
+        let item_id = game.rendered_item_id(&stack.item);
         if let Some(id) = maps::map_id(&stack) {
             use horizon_client::first_person::{MapHold, map_arm_poses, one_handed_map_pose};
             let hold = MapHold::of(hand, off_hand_empty);
             // renderOneHandedMap and renderTwoHandedMap: the arms under
             // the map, unless the player is invisible.
             if !game.own_invisible() {
+                runs.push((out.len() as u32, 0));
                 for (arm, pose) in map_arm_poses(hold, left, game.pitch, inverse_height, attack) {
                     game.first_person_arm(arm, to_world * pose, packed, &mut out);
                 }
             }
+            runs.push((out.len() as u32, item_id));
             match hold {
                 MapHold::TwoHanded => game.two_handed_map_geometry(
                     to_world,
@@ -182,7 +213,11 @@ pub(super) fn render(game: &mut crate::game::Game<'_>, alpha: f64) -> Vec<Vertex
             }
             _ => ItemPose::Swing,
         };
-        let m = to_world * crate::game::punchy::item_pose(left, inverse_height, attack, pose);
+        let mut m = to_world * crate::game::punchy::item_pose(left, inverse_height, attack, pose);
+        let shield_size = game.settings.extras.pvp.tweaks.shield_size;
+        if shield_size != 100 && &*stack.item == "minecraft:shield" {
+            m *= glam::Mat4::from_scale(glam::Vec3::splat(f32::from(shield_size) / 100.0));
+        }
         // Seeded by the player id plus the context ordinal.
         let (context, seed) = if left {
             (
@@ -210,7 +245,13 @@ pub(super) fn render(game: &mut crate::game::Game<'_>, alpha: f64) -> Vec<Vertex
             owner.using_this_item = false;
             owner.use_item_remaining_ticks = 0;
         }
-        let state = game.resolve_item(&stack, context, Some(&owner), seed);
+        let cit_hand = if hand == Hand::Off {
+            horizon_client::cit::Hand::Off
+        } else {
+            horizon_client::cit::Hand::Main
+        };
+        let state = game.resolve_item_in_hand(&stack, context, Some(&owner), seed, cit_hand);
+        runs.push((out.len() as u32, item_id));
         let light = game.world.light(
             eye[0].floor() as i32,
             eye[1].floor() as i32,
@@ -229,5 +270,5 @@ pub(super) fn render(game: &mut crate::game::Game<'_>, alpha: f64) -> Vec<Vertex
     for vertex in &mut out {
         vertex.layer &= !horizon_client::gfx::OIT_ENTITY;
     }
-    out
+    (out, runs)
 }

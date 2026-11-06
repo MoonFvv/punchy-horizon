@@ -10,9 +10,9 @@ import subprocess
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-PIN = '81ae4a7d8f27d38e5cabbdcda0a06b2c4b000045'
-MIXINS = 'ddd9700b21997c95d95ac6ee5ecafe3830cf622a'
-VERSION = '0.1.4'
+PIN = '66f3981f522b24c250b21523a70080965b940424'
+MIXINS = '5a64af938ec86b00d53d16a408aabc0038fb3e57'
+VERSION = '0.1.5'
 ENGINE = ('engine.rs', 'resources.rs', 'actions.rs', 'tuning.rs',
           'horizon_pose.rs', 'skeleton.rs', 'attachments.rs', 'playback.rs',
           'phases.rs', 'policy.rs', 'player.rs')
@@ -25,8 +25,10 @@ def main():
     parser.add_argument('--offline', action='store_true')
     args = parser.parse_args()
     horizon = args.horizon_source.resolve()
-    revision = subprocess.check_output(
-        ['git', '-C', str(horizon), 'rev-parse', 'HEAD'], text=True).strip()
+    revision_file = horizon / '.horizon-revision'
+    revision = (revision_file.read_text().strip() if revision_file.is_file() else
+                subprocess.check_output(
+                    ['git', '-C', str(horizon), 'rev-parse', 'HEAD'], text=True).strip())
     if revision != PIN:
         parser.error('Horizon checkout must be at ' + PIN)
     dependency = horizon / 'crates/horizon-mods'

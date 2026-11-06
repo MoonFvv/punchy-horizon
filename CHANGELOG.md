@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.5
+
+- Update to Horizon Nightly 2026-11-05 (`66f3981`).
+- Adapt first-person geometry to the hand/item shader ID contract.
+- Preserve current hand-pose hooks, shield sizing and held-item resolution.
+- Validate the new pin with a full native build and 12 fresh graphical checks.
+
 ## 0.1.4
 
 - Simplify the project page around features, installation and compatibility.

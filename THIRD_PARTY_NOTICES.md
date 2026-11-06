@@ -6,7 +6,7 @@
   animation, geometry and tuning data originate from Punchy. Preserve LICENSE-Punchy.
 - Horizon: Ludovic Marie and the Horizon contributors. MIT, LICENSE-Horizon.
   geometry.rs is adapted from Horizon's first-person geometry renderer at commit
-  81ae4a7d8f27d38e5cabbdcda0a06b2c4b000045.
+  66f3981f522b24c250b21523a70080965b940424.
 - Rust port development assisted by Codex.
 - data/oracles fixtures contain numerical results generated from original
   Punchy pure-class tests, not original Java classes or decompiled source.

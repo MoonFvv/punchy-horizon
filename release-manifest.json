@@ -1,10 +1,13 @@
 {
-  "version": "0.1.4",
-  "artifact": "punchy-rust-preview-0.1.4.hnmod",
-  "sha256": "80ca096ed14764830e3ae06e9efb50d05333593908f9199b0007b9c13060128e",
+  "version": "0.1.5",
+  "artifact": "punchy-rust-preview-0.1.5.hnmod",
+  "sha256": "ab68a1709cf1f08251f3934a720c0ec7f33d3ae9d8fd545441bb94e7be3ce7bc",
+  "horizon": "66f3981f522b24c250b21523a70080965b940424",
+  "mixins": "5a64af938ec86b00d53d16a408aabc0038fb3e57",
   "engine_tests": 55,
   "clippy": "passed with warnings denied",
   "native_bundle_validator": "pinned Horizon Bundle::read passed",
-  "runtime_baseline": "0.1.2; 12 graphical checks, including creative mining",
+  "native_build": "passed",
+  "runtime": "0.1.5; 12 graphical checks passed on macOS arm64 / Metal",
   "full_original_parity": false
 }

@@ -1,14 +1,16 @@
-Native first-person hand and item animations for Horizon (Minecraft 26.3).
+Punchy 0.1.5 updates native hand and item animations for **Horizon Nightly 2026-11-05 (`66f3981`)**, Minecraft 26.3.
 
-- Attacks, shields, inspection and item interactions.
-- Eating, drinking and mining start-loop-end sequences, including creative instant breaks.
-- Live animation transitions and bundled resources; no separate Punchy JAR or Fabric installation.
-- Punchy hand poses enabled by default.
+- Adapts first-person rendering to Horizon's hand/item shader ID contract.
+- Preserves current hand-pose hooks, shield sizing and held-item resolution.
+- Includes all 223 clips; no separate Punchy JAR or Fabric installation.
 
-Download the `.hnmod` asset, add it to your instance's native mods, enable it and build the game from the launcher.
+Download `punchy-rust-preview-0.1.5.hnmod`, add it to your instance's native mods, enable Punchy and rebuild the game in the launcher. It pins the tested Nightly; later Horizon revisions require validation.
 
-Pinned to Horizon `81ae4a7d8f27d38e5cabbdcda0a06b2c4b000045` and horizon-mixins `ddd9700b21997c95d95ac6ee5ecafe3830cf622a`.
+Horizon: `66f3981f522b24c250b21523a70080965b940424`.
+horizon-mixins: `5a64af938ec86b00d53d16a408aabc0038fb3e57`.
 
-Validation: 55 Rust tests and Clippy passed; the bundle is checked with the pinned Horizon parser. The 0.1.2 runtime baseline passed 12 isolated graphical checks. This release updates standalone packaging/documentation; full original-mod parity is not claimed.
+Validation: 55 Rust tests, Clippy, formatting, Horizon's bundle parser, mixin application and the native game build passed. All 12 graphical smoke checks passed again on macOS arm64 / Metal, including attacks, inspection, shields, consumption, mining and shovel interaction.
+
+Windows/Linux, shader packs, custom item texture packs and combined native mods were not tested. Full original-Punchy parity is not claimed. Previous releases remain available for rollback.
 
 Based on Punchy by Dev Punchy Man. Original license notices included.
