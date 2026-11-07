@@ -1,5 +1,55 @@
 # Validation scope
 
+## 0.1.7 — Punchy! Moves integration
+
+Validated on 2026-11-07 with the same Horizon and mixins pins as 0.1.5,
+on macOS arm64 / Apple M4 Pro (Metal):
+
+- 66 engine tests passed (+8 unit tests covering camera parameters, stepping,
+  clamping, shoulder positioning, multi-sample obstacle ray clipping, orbit/free
+  camera turning, stationary turn-in-place easing, humanoid pose interpolation,
+  and settings persistence).
+- Engine Clippy with warnings denied, formatting, and package validation passed.
+- Packaging with `python3 tools/package.py` passed Horizon's `Bundle::read`
+  validator with 40 files in `punchy-rust-preview-0.1.7.hnmod`.
+- Mixin injections added for `native_camera_pose`, `native_compute_fov`,
+  `turn_player`, and `native_gui_render_post` (14 injections total).
+- 17 graphical and UI runtime checks passed in a fresh temporary world, verifying
+  combat, shield, eating, drinking, mining, independent arm/item viewmodels,
+  settings persistence across restarts, and reset actions. Evidence:
+  `workspace/reports/punchy/moves-0.1.7/runtime-smoke.json` and PNGs beside it.
+
+## 0.1.6 — arm/item position and scale
+
+Validated on 2026-11-06 with the same Horizon and mixins pins as 0.1.5,
+on macOS arm64 / Apple M4 Pro (Metal):
+
+- 58 engine tests passed, including three new tests for neutral defaults,
+  malformed/non-finite settings, bounds, independent transforms and scale origin.
+- Engine Clippy with warnings denied, formatting, Python compilation and
+  whitespace checks passed.
+- The exact 0.1.6 bundle passed Horizon's parser; all 10 injections and both
+  support modules applied. The generated game and control tool compiled.
+- The final bundle's generated Rust is byte-identical to the compiled stage.
+- All 12 existing graphical animation checks passed again.
+- Five new graphical checks passed through real settings buttons: arm changes
+  leave items unchanged, item changes leave arms unchanged, values survive a
+  full game restart, resetting one group preserves the other, and resetting
+  everything writes neutral defaults to persistent storage.
+
+The UI tests compare the rendered authored pose matrices against independently
+expected offsets/scales, and keep screenshots before and after adjustments.
+Evidence: `workspace/reports/punchy/viewmodel-0.1.6-final/runtime-smoke.json`,
+the PNGs beside it, and `workspace/reports/punchy/viewmodel-0.1.6-*.log`.
+Windows/Linux, other mods, shader/custom texture packs, map rendering and the
+Horizon hand-pose fallback were not exercised by this graphical run.
+Their transform paths compile; they are not runtime parity claims.
+
+Settings are separate from existing animation tuning. Missing or invalid values
+use neutral defaults; position is bounded to +/-16 model pixels and scale to
+25–200%. Both hands share each group's adjustment. No worlds or player saves
+are migrated. The 0.1.5 artifact remains available for rollback.
+
 ## 0.1.5 — Nightly 2026-11-05
 
 Validated on macOS arm64 / Apple M4 Pro (Metal) on 2026-11-06:

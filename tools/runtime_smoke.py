@@ -14,8 +14,9 @@ p.add_argument('--binary',type=Path,required=True)
 p.add_argument('--ctl',type=Path,required=True)
 p.add_argument('--resources',type=Path,required=True)
 p.add_argument('--report',type=Path,required=True)
+p.add_argument('--viewmodel',action='store_true',help='also check position/scale controls, persistence and reset')
 a=p.parse_args()
-for key in vars(a):setattr(a,key,getattr(a,key).resolve())
+for key in ('binary','ctl','resources','report'):setattr(a,key,getattr(a,key).resolve())
 a.report.parent.mkdir(parents=True,exist_ok=True)
 root=Path(tempfile.mkdtemp(prefix='punchy-smoke-'))
 home=root/'home';home.mkdir()
@@ -59,7 +60,9 @@ def observe(seconds):
 def screenshot(name):
     out=a.report.parent/(name+'.png');ctl('screenshot',out);result['screenshots'].append(str(out))
 
-try:
+def launch():
+    global process
+    socket.unlink(missing_ok=True)
     process=subprocess.Popen([str(a.binary),'--game-dir',str(home),'--resources',str(a.resources),'--name','PunchySmoke','--render-distance','3','--width','960','--height','540','--offscreen','--control','--control-socket',str(socket),'--world','PunchySmoke','--seed','0','--creative'],cwd=home,env=env,stdout=log,stderr=subprocess.STDOUT)
     deadline=time.monotonic()+60
     while not socket.exists():
@@ -67,6 +70,9 @@ try:
         if time.monotonic()>deadline:raise TimeoutError('no control socket')
         time.sleep(.1)
     ctl('wait-ready','45')
+
+try:
+    launch()
     rows=observe(.5)
     assert rows and rows[-1]['loaded'] and rows[-1]['clips']==223,rows[-1:]
     assert rows[-1]['resource_source']=='embedded'
@@ -145,6 +151,10 @@ try:
     ctl('mouse','left','down');rows=observe(.5)
     ctl('mouse','left','up');rows+=observe(1)
     result['checks']['creative_instant_break_triggers_mining']=any(r.get('mining_phase') in ('Start','Loop','End') for r in rows)
+    if a.viewmodel:
+        from viewmodel_smoke import check_viewmodel
+        check_viewmodel(ctl, observe, screenshot, launch, lambda: process,
+                        home, render_diagnostic, result)
     ctl('quit');process.wait(timeout=30);process=None
     result['success']=all(result['checks'].values())
 except Exception as e:

@@ -2,12 +2,40 @@
 use super::*;
 use glam::{EulerRot, Mat4, Quat, Vec3};
 use punchy_engine::player::Playback;
-use punchy_engine::{Clip, Pose, actions as action, phases, resources};
+use punchy_engine::viewmodel::{Parameter, Target, Viewmodel};
+use punchy_engine::{Clip, Pose, actions as action, moves, phases, resources};
 use std::{cell::RefCell, collections::BTreeMap, sync::Arc};
 
 pub(super) const ID: &str = "punchy";
-pub(super) const TITLE: &str = "Punchy Rust 3.1b — preview";
+pub(super) const TITLE: &str = "Punchy! Moves (Rust preview) 0.1.7";
 thread_local! { static STATE: RefCell<State> = RefCell::new(State::default()); }
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum EditTarget {
+    #[default]
+    MovesCamera,
+    Arms,
+    Items,
+}
+
+impl EditTarget {
+    fn next(self) -> Self {
+        match self {
+            Self::MovesCamera => Self::Arms,
+            Self::Arms => Self::Items,
+            Self::Items => Self::MovesCamera,
+        }
+    }
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::MovesCamera => "Punchy! Moves 3rd-Person Camera",
+            Self::Arms => "1st-Person Arms Viewmodel",
+            Self::Items => "1st-Person Held Items",
+        }
+    }
+}
+
 #[derive(Default)]
 struct State {
     attempted: bool,
@@ -36,6 +64,11 @@ struct State {
     tuning: Option<punchy_engine::tuning::Tuning>,
     status: String,
     render_count: u64,
+    viewmodel: Viewmodel,
+    edit_target: EditTarget,
+    shoulder_camera: moves::ShoulderCamera,
+    live_hud_active: bool,
+    hud_selected_param: usize,
 }
 struct Catalog<'a> {
     state: &'a State,
@@ -132,6 +165,20 @@ pub(super) fn tick(game: &mut Game<'_>) {
     if !game.native_window() {
         return;
     }
+    let viewmodel = read_viewmodel(game);
+    let shoulder_camera = read_shoulder_camera(game);
+    STATE.with(|s| {
+        let mut s = s.borrow_mut();
+        s.viewmodel = viewmodel;
+        s.shoulder_camera.enabled = shoulder_camera.enabled;
+        s.shoulder_camera.horizontal = shoulder_camera.horizontal;
+        s.shoulder_camera.vertical = shoulder_camera.vertical;
+        s.shoulder_camera.depth = shoulder_camera.depth;
+        s.shoulder_camera.fov = shoulder_camera.fov;
+        s.shoulder_camera.rotation_yaw = shoulder_camera.rotation_yaw;
+        s.shoulder_camera.rotation_pitch = shoulder_camera.rotation_pitch;
+        s.shoulder_camera.update(1.0 / 20.0);
+    });
     if !enabled(game) || game.player.is_none() {
         STATE.with(|s| {
             let mut s = s.borrow_mut();
@@ -270,30 +317,296 @@ pub(super) fn key(game: &mut Game<'_>, key: &str, pressed: bool) {
     if key == game.native_mod_key(ID, "reload", "key.keyboard.f7") {
         STATE.with(|s| *s.borrow_mut() = State::default());
     }
+    if key == game.native_mod_key(ID, "moves_orbit", "key.keyboard.f8") {
+        STATE.with(|s| {
+            let mut s = s.borrow_mut();
+            s.shoulder_camera.toggle_free_camera(game.yaw, game.pitch);
+        });
+    }
+    if key == game.native_mod_key(ID, "live_hud", "key.keyboard.f9") {
+        STATE.with(|s| {
+            let mut s = s.borrow_mut();
+            s.live_hud_active = !s.live_hud_active;
+            if s.live_hud_active {
+                s.viewmodel = read_viewmodel(game);
+                s.shoulder_camera = read_shoulder_camera(game);
+            }
+        });
+    }
+
+    let is_live_hud = STATE.with(|s| s.borrow().live_hud_active);
+    if is_live_hud {
+        match key {
+            "key.keyboard.tab" => {
+                STATE.with(|s| {
+                    let mut s = s.borrow_mut();
+                    s.edit_target = s.edit_target.next();
+                });
+            }
+            "key.keyboard.up" | "key.keyboard.page.up" => {
+                STATE.with(|s| {
+                    let mut s = s.borrow_mut();
+                    s.hud_selected_param = if s.hud_selected_param == 0 { 3 } else { s.hud_selected_param - 1 };
+                });
+            }
+            "key.keyboard.down" | "key.keyboard.page.down" => {
+                STATE.with(|s| {
+                    let mut s = s.borrow_mut();
+                    s.hud_selected_param = (s.hud_selected_param + 1) % 4;
+                });
+            }
+            "key.keyboard.left" | "key.keyboard.minus" | "key.keyboard.left.bracket" => {
+                STATE.with(|s| {
+                    let mut s = s.borrow_mut();
+                    let target = s.edit_target;
+                    let param_idx = s.hud_selected_param;
+                    step_target_param(game, &mut s, target, param_idx, false);
+                });
+            }
+            "key.keyboard.right" | "key.keyboard.equal" | "key.keyboard.right.bracket" => {
+                STATE.with(|s| {
+                    let mut s = s.borrow_mut();
+                    let target = s.edit_target;
+                    let param_idx = s.hud_selected_param;
+                    step_target_param(game, &mut s, target, param_idx, true);
+                });
+            }
+            "key.keyboard.backspace" => {
+                STATE.with(|s| {
+                    let mut s = s.borrow_mut();
+                    let target = s.edit_target;
+                    let param_idx = s.hud_selected_param;
+                    reset_target_param(game, &mut s, target, param_idx);
+                });
+            }
+            "key.keyboard.r" => {
+                STATE.with(|s| {
+                    let mut s = s.borrow_mut();
+                    let target = s.edit_target;
+                    reset_target_all(game, &mut s, target);
+                });
+            }
+            _ => {}
+        }
+    }
 }
+
+fn read_viewmodel(game: &Game<'_>) -> Viewmodel {
+    Viewmodel::read(|key| game.native_setting(ID, key))
+}
+fn read_shoulder_camera(game: &Game<'_>) -> moves::ShoulderCamera {
+    moves::ShoulderCamera::read(|key| game.native_setting(ID, key))
+}
+
+fn get_target_param_display(s: &State, target: EditTarget, index: usize) -> (String, String) {
+    match target {
+        EditTarget::MovesCamera => {
+            let p = moves::CameraParameter::ALL[index.min(3)];
+            let val = match p {
+                moves::CameraParameter::Horizontal => s.shoulder_camera.horizontal,
+                moves::CameraParameter::Vertical => s.shoulder_camera.vertical,
+                moves::CameraParameter::Depth => s.shoulder_camera.depth,
+                moves::CameraParameter::Fov => s.shoulder_camera.fov,
+            };
+            (p.label().to_string(), p.display(val))
+        }
+        EditTarget::Arms | EditTarget::Items => {
+            let vm_target = if target == EditTarget::Arms { Target::Arms } else { Target::Items };
+            let p = Parameter::ALL[index.min(3)];
+            let val = s.viewmodel.get(vm_target).value(p);
+            (p.label().to_string(), p.display(val))
+        }
+    }
+}
+
+fn step_target_param(game: &Game<'_>, s: &mut State, target: EditTarget, index: usize, increase: bool) {
+    match target {
+        EditTarget::MovesCamera => {
+            let cp = moves::CameraParameter::ALL[index.min(3)];
+            let current = match cp {
+                moves::CameraParameter::Horizontal => s.shoulder_camera.horizontal,
+                moves::CameraParameter::Vertical => s.shoulder_camera.vertical,
+                moves::CameraParameter::Depth => s.shoulder_camera.depth,
+                moves::CameraParameter::Fov => s.shoulder_camera.fov,
+            };
+            let stepped = cp.step(current, increase);
+            game.native_set_setting(ID, cp.key(), &format!("{:.2}", stepped));
+            match cp {
+                moves::CameraParameter::Horizontal => s.shoulder_camera.horizontal = stepped,
+                moves::CameraParameter::Vertical => s.shoulder_camera.vertical = stepped,
+                moves::CameraParameter::Depth => s.shoulder_camera.depth = stepped,
+                moves::CameraParameter::Fov => s.shoulder_camera.fov = stepped,
+            }
+        }
+        EditTarget::Arms | EditTarget::Items => {
+            let vm_target = if target == EditTarget::Arms { Target::Arms } else { Target::Items };
+            let p = Parameter::ALL[index.min(3)];
+            let value = s.viewmodel.get(vm_target).value(p);
+            let stepped = p.step(value, increase);
+            game.native_set_setting(ID, p.key(vm_target), &format!("{:.2}", stepped));
+            s.viewmodel = read_viewmodel(game);
+        }
+    }
+}
+
+fn reset_target_param(game: &Game<'_>, s: &mut State, target: EditTarget, index: usize) {
+    match target {
+        EditTarget::MovesCamera => {
+            let cp = moves::CameraParameter::ALL[index.min(3)];
+            let def = cp.default_value();
+            game.native_set_setting(ID, cp.key(), &def.to_string());
+            match cp {
+                moves::CameraParameter::Horizontal => s.shoulder_camera.horizontal = def,
+                moves::CameraParameter::Vertical => s.shoulder_camera.vertical = def,
+                moves::CameraParameter::Depth => s.shoulder_camera.depth = def,
+                moves::CameraParameter::Fov => s.shoulder_camera.fov = def,
+            }
+        }
+        EditTarget::Arms | EditTarget::Items => {
+            let vm_target = if target == EditTarget::Arms { Target::Arms } else { Target::Items };
+            let p = Parameter::ALL[index.min(3)];
+            let def = p.default_value();
+            game.native_set_setting(ID, p.key(vm_target), &def.to_string());
+            s.viewmodel = read_viewmodel(game);
+        }
+    }
+}
+
+fn reset_target_all(game: &Game<'_>, s: &mut State, target: EditTarget) {
+    match target {
+        EditTarget::MovesCamera => {
+            for cp in moves::CameraParameter::ALL {
+                game.native_set_setting(ID, cp.key(), &cp.default_value().to_string());
+            }
+            s.shoulder_camera.horizontal = moves::CameraParameter::Horizontal.default_value();
+            s.shoulder_camera.vertical = moves::CameraParameter::Vertical.default_value();
+            s.shoulder_camera.depth = moves::CameraParameter::Depth.default_value();
+            s.shoulder_camera.fov = moves::CameraParameter::Fov.default_value();
+        }
+        EditTarget::Arms | EditTarget::Items => {
+            let vm_target = if target == EditTarget::Arms { Target::Arms } else { Target::Items };
+            for p in Parameter::ALL {
+                game.native_set_setting(ID, p.key(vm_target), &p.default_value().to_string());
+            }
+            s.viewmodel = read_viewmodel(game);
+        }
+    }
+}
+
 pub(super) fn settings(game: &Game<'_>, buttons: &mut Vec<String>) {
     let on = enabled(game);
-    buttons.push(format!("Punchy preview: {}", if on { "ON" } else { "OFF" }));
-    buttons.push(format!("Animation speed: {:.1}", global_speed(game)));
-    buttons.push("Reload animations".into());
+    // 0: Master preview toggle
+    buttons.push(format!("Punchy Preview: {}", if on { "ENABLED" } else { "DISABLED" }));
+
+    // 1: Live HUD Editor toggle (F9)
+    let live_hud = STATE.with(|s| s.borrow().live_hud_active);
+    buttons.push(format!("In-Game Live HUD Editor (F9): {}", if live_hud { "OPEN" } else { "CLOSED" }));
+
+    // 2: Third-Person Shoulder Cam toggle
+    let shoulder_on = game.native_setting(ID, "moves_camera_enabled").as_deref() != Some("false");
+    buttons.push(format!("Third-Person Shoulder Cam: {}", if shoulder_on { "ENABLED" } else { "DISABLED" }));
+
+    // 3: Orbit Camera toggle (F8)
+    let orbit = STATE.with(|s| s.borrow().shoulder_camera.free_camera);
+    buttons.push(format!("Orbit / Free Camera (F8): {}", if orbit { "ACTIVE" } else { "INACTIVE" }));
+
+    // 4: Hand Poses toggle
     buttons.push(format!(
-        "Hand poses: {}",
+        "Hand Poses: {}",
         if game.native_setting(ID, "hand_poses").as_deref() == Some("horizon") {
-            "Horizon"
+            "Horizon (Vanilla)"
         } else {
-            "Punchy"
+            "Punchy (Full Motion)"
         }
     ));
+
+    // 5: Animation speed
+    buttons.push(format!("Animation Speed: {:.1}x (click to change)", global_speed(game)));
+
+    let viewmodel = read_viewmodel(game);
+    let shoulder_camera = read_shoulder_camera(game);
+
     STATE.with(|s| {
         let mut s = s.borrow_mut();
+        s.viewmodel = viewmodel;
+        s.shoulder_camera = shoulder_camera;
+        let target = s.edit_target;
+
+        // 6: Section switcher
+        buttons.push(format!("▶ Section: [ {} ] (click to switch)", target.label()));
+
+        // 7..14: Dedicated [-] and [+] buttons for each parameter
+        match target {
+            EditTarget::MovesCamera => {
+                for cp in moves::CameraParameter::ALL {
+                    let val = match cp {
+                        moves::CameraParameter::Horizontal => s.shoulder_camera.horizontal,
+                        moves::CameraParameter::Vertical => s.shoulder_camera.vertical,
+                        moves::CameraParameter::Depth => s.shoulder_camera.depth,
+                        moves::CameraParameter::Fov => s.shoulder_camera.fov,
+                    };
+                    let step_str = match cp {
+                        moves::CameraParameter::Fov => "5°",
+                        moves::CameraParameter::Depth => "0.25",
+                        _ => "0.10",
+                    };
+                    buttons.push(format!("[-] {}: {} (-{step_str})", cp.label(), cp.display(val)));
+                    buttons.push(format!("[+] {}: {} (+{step_str})", cp.label(), cp.display(val)));
+                }
+            }
+            EditTarget::Arms | EditTarget::Items => {
+                let vm_target = if target == EditTarget::Arms { Target::Arms } else { Target::Items };
+                for p in Parameter::ALL {
+                    let val = s.viewmodel.get(vm_target).value(p);
+                    let step_str = if p == Parameter::Scale { "5%" } else { "0.5 px" };
+                    buttons.push(format!("[-] {}: {} (-{step_str})", p.label(), p.display(val)));
+                    buttons.push(format!("[+] {}: {} (+{step_str})", p.label(), p.display(val)));
+                }
+            }
+        }
+
+        // 15: Reset current section
+        buttons.push(format!("Reset {} to defaults", target.label()));
+
+        // 16: Reset all
+        buttons.push("Reset all mod settings to defaults".into());
+
+        // 17: Reload
+        buttons.push("Reload animations & assets (F7)".into());
+
+        // 18: Diagnostics / status
         load(&mut s);
-        buttons.push(s.error.clone().unwrap_or_else(|| s.status.clone()));
+        buttons.push(s.error.clone().unwrap_or_else(|| {
+            format!("Status: {} | Press F9 in-game for Live HUD Editor", s.status)
+        }));
     });
 }
+
 pub(super) fn click(game: &Game<'_>, button: usize) {
     match button {
         0 => game.native_set_setting(ID, "enabled", if enabled(game) { "false" } else { "true" }),
-        1 => {
+        1 => STATE.with(|s| {
+            let mut s = s.borrow_mut();
+            s.live_hud_active = !s.live_hud_active;
+        }),
+        2 => {
+            let current = game.native_setting(ID, "moves_camera_enabled").as_deref() != Some("false");
+            game.native_set_setting(ID, "moves_camera_enabled", if current { "false" } else { "true" });
+        }
+        3 => STATE.with(|s| {
+            let mut s = s.borrow_mut();
+            s.shoulder_camera.toggle_free_camera(game.yaw, game.pitch);
+        }),
+        4 => game.native_set_setting(
+            ID,
+            "hand_poses",
+            if game.native_setting(ID, "hand_poses").as_deref() == Some("horizon") {
+                "punchy"
+            } else {
+                "horizon"
+            },
+        ),
+        5 => {
             let speed = global_speed(game);
             game.native_set_setting(
                 ID,
@@ -305,18 +618,120 @@ pub(super) fn click(game: &Game<'_>, button: usize) {
                 },
             );
         }
-        2 => STATE.with(|s| *s.borrow_mut() = State::default()),
-        3 => game.native_set_setting(
-            ID,
-            "hand_poses",
-            if game.native_setting(ID, "hand_poses").as_deref() == Some("horizon") {
-                "punchy"
-            } else {
-                "horizon"
-            },
-        ),
+        6 => STATE.with(|s| {
+            let mut s = s.borrow_mut();
+            s.edit_target = s.edit_target.next();
+        }),
+        7..=14 => STATE.with(|s| {
+            let mut s = s.borrow_mut();
+            let target = s.edit_target;
+            let param_idx = (button - 7) / 2;
+            let increase = (button - 7) % 2 == 1;
+            step_target_param(game, &mut s, target, param_idx, increase);
+        }),
+        15 => STATE.with(|s| {
+            let mut s = s.borrow_mut();
+            let target = s.edit_target;
+            reset_target_all(game, &mut s, target);
+        }),
+        16 => STATE.with(|s| {
+            let mut s = s.borrow_mut();
+            for target in [Target::Arms, Target::Items] {
+                for p in Parameter::ALL {
+                    game.native_set_setting(ID, p.key(target), &p.default_value().to_string());
+                }
+            }
+            for cp in moves::CameraParameter::ALL {
+                game.native_set_setting(ID, cp.key(), &cp.default_value().to_string());
+            }
+            s.shoulder_camera.horizontal = moves::CameraParameter::Horizontal.default_value();
+            s.shoulder_camera.vertical = moves::CameraParameter::Vertical.default_value();
+            s.shoulder_camera.depth = moves::CameraParameter::Depth.default_value();
+            s.shoulder_camera.fov = moves::CameraParameter::Fov.default_value();
+            s.viewmodel = read_viewmodel(game);
+        }),
+        17 => STATE.with(|s| *s.borrow_mut() = State::default()),
         _ => {}
     }
+}
+
+pub(super) fn render_gui(
+    game: &Game<'_>,
+    batch: &mut horizon_client::hud::HudBatch,
+    gui_hidden: bool,
+    _focused: bool,
+) {
+    if !enabled(game) || gui_hidden {
+        return;
+    }
+
+    STATE.with(|s| {
+        let s = s.borrow();
+        if !s.live_hud_active {
+            if s.shoulder_camera.free_camera {
+                let text = "Punchy Orbit Mode: F8 (Press F8 to lock)";
+                let tw = game.native_text_width(text);
+                let x = (batch.width - tw - 16.0).max(10.0);
+                game.native_fill(batch, [x, 8.0, tw + 12.0, 16.0], 0xCC111827);
+                game.native_text(batch, text, [x + 6.0, 12.0], 0xFCD34D, true);
+            }
+            return;
+        }
+
+        let w = 270.0_f32;
+        let h = 144.0_f32;
+        let x = 10.0_f32;
+        let y = 10.0_f32;
+
+        // Outer drop shadow
+        game.native_fill(batch, [x - 1.0, y - 1.0, w + 2.0, h + 2.0], 0x88000000);
+        // Card background (Dark slate)
+        game.native_fill(batch, [x, y, w, h], 0xEE0F172A);
+        // Header background
+        game.native_fill(batch, [x, y, w, 20.0], 0xFF1E293B);
+        // Cyan accent top border
+        game.native_fill(batch, [x, y, w, 2.0], 0xFF38BDF8);
+
+        // Header Title
+        game.native_text(batch, "PUNCHY LIVE EDITOR", [x + 8.0, y + 6.0], 0x38BDF8, true);
+        game.native_text(batch, "[F9 to close]", [x + w - 75.0, y + 6.0], 0x94A3B8, true);
+
+        // Category Tab Row
+        let cat_label = format!("< {} >", s.edit_target.label());
+        game.native_text(batch, "Category [Tab]:", [x + 8.0, y + 25.0], 0xCBD5E1, true);
+        game.native_text(batch, &cat_label, [x + 95.0, y + 25.0], 0xFCD34D, true);
+
+        // Divider
+        game.native_fill(batch, [x + 6.0, y + 38.0, w - 12.0, 1.0], 0x33FFFFFF);
+
+        // 4 Parameters
+        for i in 0..4 {
+            let row_y = y + 42.0 + (i as f32 * 17.0);
+            let (label, val_str) = get_target_param_display(&s, s.edit_target, i);
+            let is_selected = i == s.hud_selected_param;
+
+            if is_selected {
+                // Highlight row background
+                game.native_fill(batch, [x + 4.0, row_y - 1.0, w - 8.0, 16.0], 0x3338BDF8);
+                // Active indicator
+                game.native_text(batch, ">", [x + 6.0, row_y + 3.0], 0x38BDF8, true);
+                game.native_text(batch, &label, [x + 16.0, row_y + 3.0], 0xFFFFFF, true);
+                let val_w = game.native_text_width(&val_str);
+                game.native_text(batch, &val_str, [x + w - 12.0 - val_w, row_y + 3.0], 0x38BDF8, true);
+            } else {
+                game.native_text(batch, &label, [x + 16.0, row_y + 3.0], 0x94A3B8, true);
+                let val_w = game.native_text_width(&val_str);
+                game.native_text(batch, &val_str, [x + w - 12.0 - val_w, row_y + 3.0], 0x64748B, true);
+            }
+        }
+
+        // Bottom divider
+        game.native_fill(batch, [x + 6.0, y + 112.0, w - 12.0, 1.0], 0x33FFFFFF);
+
+        // Footer hints
+        game.native_text(batch, "↑/↓ Select   ←/→ Adjust live", [x + 8.0, y + 116.0], 0x94A3B8, true);
+        game.native_text(batch, "Bksp: Reset param   R: Reset group", [x + 8.0, y + 128.0], 0x64748B, true);
+    });
 }
 
 // Authored skeletal delta calibrated against the same bone's rest transform.
@@ -508,7 +923,7 @@ pub(super) fn begin(game: &mut Game<'_>, alpha: f64) {
         s.render_count=s.render_count.saturating_add(1);
         if let Some(path)=std::env::var_os("PUNCHY_RENDER_DIAGNOSTICS") {
             let value=serde_json::json!({"frames":s.render_count,"authored_poses":authored.iter().flatten().count(),"active":active,
-                "arm_matrices":authored.map(|p|p.map(|p|p.arm.to_cols_array())),"item_matrices":authored.map(|p|p.map(|p|p.item.to_cols_array()))});
+                "arm_matrices":authored.map(|p|p.map(|p|s.viewmodel.arms.apply(p.arm).to_cols_array())),"item_matrices":authored.map(|p|p.map(|p|s.viewmodel.items.apply(p.item).to_cols_array())),"viewmodel":{"arms":[s.viewmodel.arms.offset.x,s.viewmodel.arms.offset.y,s.viewmodel.arms.offset.z,s.viewmodel.arms.scale],"items":[s.viewmodel.items.offset.x,s.viewmodel.items.offset.y,s.viewmodel.items.offset.z,s.viewmodel.items.scale]}});
             if let Ok(bytes)=serde_json::to_vec_pretty(&value){let _=std::fs::write(path,bytes);}
         }
         punchy_engine::horizon_pose::set_frame(punchy_engine::horizon_pose::Frame {
@@ -530,33 +945,39 @@ pub(super) fn item_pose(
     pose: horizon_client::first_person::ItemPose,
 ) -> Mat4 {
     if let Some(pose) = punchy_engine::horizon_pose::authored(left) {
-        return pose.item;
+        return adjust_item(pose.item);
     }
     let swing = if punchy_engine::horizon_pose::suppress_swing(left) {
         0.
     } else {
         attack
     };
-    punchy_engine::horizon_pose::transform(
+    adjust_item(punchy_engine::horizon_pose::transform(
         left,
         horizon_client::first_person::item_pose(left, height, swing, pose),
-    )
+    ))
 }
 pub(super) fn arm_pose(left: bool, height: f32, attack: f32) -> Mat4 {
     if let Some(pose) = punchy_engine::horizon_pose::authored(left) {
-        return pose.arm;
+        return adjust_arm(pose.arm);
     }
     let swing = if punchy_engine::horizon_pose::suppress_swing(left) {
         0.
     } else {
         attack
     };
-    punchy_engine::horizon_pose::transform(
+    adjust_arm(punchy_engine::horizon_pose::transform(
         left,
         horizon_client::first_person::player_arm_pose(left, height, swing),
-    )
+    ))
 }
 
+pub(super) fn adjust_arm(pose: Mat4) -> Mat4 {
+    STATE.with(|s| s.borrow().viewmodel.arms.apply(pose))
+}
+pub(super) fn adjust_item(pose: Mat4) -> Mat4 {
+    STATE.with(|s| s.borrow().viewmodel.items.apply(pose))
+}
 pub(super) fn authored(left: bool) -> bool {
     punchy_engine::horizon_pose::authored(left).is_some()
 }
@@ -888,5 +1309,108 @@ pub(super) fn rendered_items(game: &Game<'_>) -> [Option<ItemStack>; 2] {
 pub(super) fn mining_attempt(game: &Game<'_>) {
     if game.native_window() && enabled(game) && !game.spectator() {
         STATE.with(|s| s.borrow_mut().mining_attempt = true);
+    }
+}
+
+pub(super) fn camera_pose(
+    game: &Game<'_>,
+    _partial: f32,
+    position: &mut [f64; 3],
+    yaw: &mut f32,
+    pitch: &mut f32,
+) {
+    if !enabled(game) || game.player.is_none() {
+        return;
+    }
+    if game.camera_type != perspective::CameraType::ThirdPersonBack {
+        return;
+    }
+    STATE.with(|s| {
+        let s = s.borrow();
+        if !s.shoulder_camera.is_active() {
+            return;
+        }
+        let pivot = if game.view.eye != [0.0, 0.0, 0.0] {
+            Vec3::new(
+                game.view.eye[0] as f32,
+                game.view.eye[1] as f32,
+                game.view.eye[2] as f32,
+            )
+        } else if let Some(p) = game.player.as_ref() {
+            Vec3::new(
+                p.position.x as f32,
+                (p.position.y + f64::from(p.dimensions.eye_height)) as f32,
+                p.position.z as f32,
+            )
+        } else {
+            Vec3::new(position[0] as f32, position[1] as f32, position[2] as f32)
+        };
+
+        let (final_yaw, final_pitch) = s.shoulder_camera.solve_rotation(*yaw, *pitch);
+        let (forward, right, up) = moves::ShoulderCamera::basis_vectors(final_yaw, final_pitch);
+
+        let clip_fn = |from: Vec3, to: Vec3| -> Option<Vec3> {
+            let delta = to - from;
+            let dist = delta.length();
+            if dist <= 1e-4 {
+                return None;
+            }
+            let dir = delta / dist;
+            let hit = game.clip_ray(
+                [from.x as f64, from.y as f64, from.z as f64],
+                [dir.x as f64, dir.y as f64, dir.z as f64],
+                dist as f64,
+            )?;
+            Some(Vec3::new(
+                hit.point[0] as f32,
+                hit.point[1] as f32,
+                hit.point[2] as f32,
+            ))
+        };
+
+        let cam_pos = s.shoulder_camera.solve_camera_position(pivot, forward, right, up, clip_fn);
+
+        *position = [cam_pos.x as f64, cam_pos.y as f64, cam_pos.z as f64];
+        *yaw = final_yaw;
+        *pitch = final_pitch;
+    });
+}
+
+pub(super) fn compute_fov(
+    game: &Game<'_>,
+    _partial: f32,
+    _camera: [f64; 3],
+    degrees: &mut f32,
+) {
+    if !enabled(game) || game.camera_type != perspective::CameraType::ThirdPersonBack {
+        return;
+    }
+    STATE.with(|s| {
+        let s = s.borrow();
+        if s.shoulder_camera.is_active() {
+            let fov = s.shoulder_camera.fov;
+            if (fov - moves::CameraParameter::Fov.default_value()).abs() > 0.1 {
+                *degrees = fov;
+            }
+        }
+    });
+}
+
+pub(super) fn turn_player(
+    game: &Game<'_>,
+    xo: f64,
+    yo: f64,
+) -> std::ops::ControlFlow<()> {
+    if !enabled(game) {
+        return std::ops::ControlFlow::Continue(());
+    }
+    let turned = STATE.with(|s| {
+        let mut s = s.borrow_mut();
+        s.shoulder_camera.turn_free_camera(xo as f32, yo as f32)
+    });
+    if turned {
+        std::ops::ControlFlow::Break(())
+    } else {
+        std::ops::ControlFlow::Continue(())
     }
 }

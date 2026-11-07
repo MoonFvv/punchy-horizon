@@ -3,7 +3,7 @@
 ## Compatibility
 
 - Minecraft: **26.3**.
-- Bundle: **0.1.5** (Nightly 2026-11-05 compatibility update).
+- Bundle: **0.1.7** (Punchy! Moves integration: third-person shoulder camera, free/orbit camera mode, turn easing, in-game controls).
 - Horizon Nightly 2026-11-05: `66f3981f522b24c250b21523a70080965b940424`.
 - horizon-mixins: `5a64af938ec86b00d53d16a408aabc0038fb3e57`.
 
@@ -45,3 +45,9 @@ export of the pinned Horizon source. Build `horizon-client` and the
 `--ctl`, `--resources` and `--report`. It creates fresh temporary homes and a
 throwaway world; it never uses the player's saves. See VALIDATION.md for scope.
 
+
+Add `--viewmodel` to the runtime smoke command to exercise the real mod-settings
+buttons, verify independent arm/item matrices, restart the game to check
+persistence, and test both reset actions. It uses the same scratch game directory
+for that restart. Numeric defaults, input validation, bounds and transform order
+are also covered by engine tests in `viewmodel.rs`.

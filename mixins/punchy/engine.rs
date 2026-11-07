@@ -1414,3 +1414,9 @@ pub mod phases;
 pub mod policy;
 
 pub mod player;
+
+/// Player-configurable first-person arm and item transforms.
+pub mod viewmodel;
+
+/// Punchy! Moves — dynamic third-person camera, orbit/free camera, and locomotion.
+pub mod moves;

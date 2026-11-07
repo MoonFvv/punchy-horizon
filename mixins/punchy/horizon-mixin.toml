@@ -1,6 +1,6 @@
 [mod]
 id = "punchy"
-version = "0.1.5"
+version = "0.1.7"
 priority = 100
 
 [compatibility]
@@ -92,3 +92,52 @@ kind = "HEAD"
 target = "horizon_client::game::remote::Game<'_>::remote_mining"
 helper = "mining.rs"
 bindings = [{ name="game", ty="&crate::game::Game<'_>", value="&*self" },{ name="start", ty="bool", value="start" }]
+
+[[injection]]
+id = "camera_pose"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_camera_pose"
+helper = "camera.rs"
+bindings = [
+  { name="game", ty="&crate::game::Game<'_>", value="&*self" },
+  { name="partial", ty="f32", value="partial" },
+  { name="position", ty="&mut [f64; 3]", value="&mut *position" },
+  { name="yaw", ty="&mut f32", value="&mut *yaw" },
+  { name="pitch", ty="&mut f32", value="&mut *pitch" }
+]
+
+[[injection]]
+id = "compute_fov"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_compute_fov"
+helper = "fov.rs"
+bindings = [
+  { name="game", ty="&crate::game::Game<'_>", value="&*self" },
+  { name="partial", ty="f32", value="partial" },
+  { name="camera", ty="[f64; 3]", value="camera" },
+  { name="degrees", ty="&mut f32", value="&mut *degrees" }
+]
+
+[[injection]]
+id = "turn_player"
+kind = "HEAD"
+cancellable = true
+target = "horizon_client::game::perspective::Game<'_>::turn_player"
+helper = "turn.rs"
+bindings = [
+  { name="game", ty="&crate::game::Game<'_>", value="&*self" },
+  { name="xo", ty="f64", value="xo" },
+  { name="yo", ty="f64", value="yo" }
+]
+
+[[injection]]
+id = "gui_render_post"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_gui_render_post"
+helper = "gui.rs"
+bindings = [
+  { name="game", ty="&crate::game::Game<'_>", value="&*self" },
+  { name="batch", ty="&mut horizon_client::hud::HudBatch", value="&mut *batch" },
+  { name="gui_hidden", ty="bool", value="gui_hidden" },
+  { name="focused", ty="bool", value="focused" }
+]

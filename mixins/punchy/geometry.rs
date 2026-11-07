@@ -120,21 +120,30 @@ pub(super) fn render(
             if !game.own_invisible() {
                 runs.push((out.len() as u32, 0));
                 for (arm, pose) in map_arm_poses(hold, left, game.pitch, inverse_height, attack) {
-                    game.first_person_arm(arm, to_world * pose, packed, &mut out);
+                    game.first_person_arm(
+                        arm,
+                        to_world * punchy::adjust_arm(pose),
+                        packed,
+                        &mut out,
+                    );
                 }
             }
             runs.push((out.len() as u32, item_id));
             match hold {
-                MapHold::TwoHanded => game.two_handed_map_geometry(
-                    to_world,
-                    attack,
-                    inverse_height,
-                    id,
-                    packed,
-                    &mut out,
-                ),
+                MapHold::TwoHanded => {
+                    use horizon_core::geometry::trig::Mth;
+                    let swing = (attack.sqrt() * std::f32::consts::PI).msin();
+                    let pose = horizon_client::first_person::two_handed_map_base(
+                        game.pitch,
+                        inverse_height,
+                        attack,
+                    ) * glam::Mat4::from_rotation_x((swing * 20.0).to_radians())
+                        * glam::Mat4::from_scale(glam::Vec3::splat(2.0));
+                    game.held_map(to_world * punchy::adjust_item(pose), id, packed, &mut out);
+                }
                 MapHold::OneHanded => game.held_map(
-                    to_world * one_handed_map_pose(left, inverse_height, attack),
+                    to_world
+                        * punchy::adjust_item(one_handed_map_pose(left, inverse_height, attack)),
                     id,
                     packed,
                     &mut out,
