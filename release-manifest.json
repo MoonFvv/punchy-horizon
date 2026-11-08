@@ -1,13 +1,13 @@
 {
-  "version": "0.1.7",
-  "artifact": "punchy-rust-preview-0.1.7.hnmod",
-  "sha256": "793d7451a92d1dca64a28c21d89faa9e5d950023b781e90eb77f203e77b162f0",
+  "version": "0.1.8",
+  "artifact": "punchy-rust-preview-0.1.8.hnmod",
+  "sha256": "50099d91c6d2839d43fc62a6010197a921b880ef4ab79821403504f2de98e014",
   "horizon": "66f3981f522b24c250b21523a70080965b940424",
   "mixins": "5a64af938ec86b00d53d16a408aabc0038fb3e57",
   "engine_tests": 66,
   "clippy": "passed with warnings denied",
   "native_bundle_validator": "pinned Horizon Bundle::read passed",
   "native_build": "passed",
-  "runtime": "0.1.7; Punchy! Moves shoulder camera and locomotion integration",
+  "runtime": "0.1.8; In-Game Live HUD Editor F9, overhauled mod settings, and launcher build fixes",
   "full_original_parity": false
 }

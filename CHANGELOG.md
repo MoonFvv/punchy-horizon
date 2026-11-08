@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.7
+## 0.1.8
 
 - In-Game Live HUD Editor (F9):
   - On-screen translucent card overlay rendered via `native_gui_render_post`.
@@ -10,13 +10,20 @@
   - All 4 parameters in each category visible at once with dedicated `[-]` and `[+]` stepping buttons and exact numerical feedback.
   - Category switching between Moves Camera, Arms Viewmodel, and Held Items.
   - Section-specific and global reset buttons.
+- Horizon Native Build Compatibility:
+  - Wrapped helper function definitions in `camera.rs`, `fov.rs`, and `gui.rs` conforming to the latest horizon-mixins syntax.
+  - Added `native_gui_render_post` mixin injection (14 total injections).
+  - Cleaned up unused fields for zero compiler warnings.
+
+## 0.1.7
+
 - Integrate Punchy! Moves third-person dynamic shoulder camera:
   - Over-the-shoulder offset with horizontal, vertical, depth, and FOV adjustments.
   - Multi-sample obstacle collision raycast preventing camera clipping through blocks.
   - Free / orbit camera mode with F8 key toggle and mouse rotation handling.
   - Stationary turn-in-place easing with body yaw smoothing and 50-degree head constraint.
   - Humanoid locomotion and pose interpolation data structures.
-  - Injections for `native_camera_pose`, `native_compute_fov`, `turn_player`, and `native_gui_render_post`.
+  - Injections for `native_camera_pose`, `native_compute_fov`, and `turn_player`.
 
 ## 0.1.6
 

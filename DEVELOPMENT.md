@@ -3,7 +3,7 @@
 ## Compatibility
 
 - Minecraft: **26.3**.
-- Bundle: **0.1.7** (Punchy! Moves integration: third-person shoulder camera, free/orbit camera mode, turn easing, in-game controls).
+- Bundle: **0.1.8** (In-Game Live HUD Editor F9, overhauled settings, Punchy! Moves shoulder camera, free/orbit camera mode, turn easing).
 - Horizon Nightly 2026-11-05: `66f3981f522b24c250b21523a70080965b940424`.
 - horizon-mixins: `5a64af938ec86b00d53d16a408aabc0038fb3e57`.
 

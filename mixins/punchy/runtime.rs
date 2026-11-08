@@ -7,7 +7,7 @@ use punchy_engine::{Clip, Pose, actions as action, moves, phases, resources};
 use std::{cell::RefCell, collections::BTreeMap, sync::Arc};
 
 pub(super) const ID: &str = "punchy";
-pub(super) const TITLE: &str = "Punchy! Moves (Rust preview) 0.1.7";
+pub(super) const TITLE: &str = "Punchy! Moves (Rust preview) 0.1.8";
 thread_local! { static STATE: RefCell<State> = RefCell::new(State::default()); }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]

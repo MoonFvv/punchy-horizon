@@ -1,5 +1,18 @@
 # Validation scope
 
+## 0.1.8 — Live HUD Editor, settings overhaul, and launcher build fixes
+
+Validated on 2026-11-08 with Horizon Nightly `66f3981` and mixins `5a64af93`,
+on macOS arm64 / Apple M4 Pro (Metal):
+
+- 66 engine unit tests passed with 0 failures.
+- Engine Clippy with all warnings denied passed cleanly.
+- Mixin helper syntax updated and validated with `horizon-mixins plan` and `apply` (14 injections total).
+- Horizon client stage build with mixins applied passed `cargo check` and compile verification.
+- Packaging with `python3 tools/package.py` passed Horizon's `Bundle::read`
+  validator with 40 files in `punchy-rust-preview-0.1.8.hnmod`.
+- Verified live HUD editor (F9) keybindings, category tab cycling, parameter stepping, and settings persistence.
+
 ## 0.1.7 — Punchy! Moves integration
 
 Validated on 2026-11-07 with the same Horizon and mixins pins as 0.1.5,
